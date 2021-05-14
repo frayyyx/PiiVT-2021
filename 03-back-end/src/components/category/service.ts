@@ -5,12 +5,16 @@ import { IAddCategory } from "./dto/AddCategory";
 import BaseService from "../../services/BaseService";
 import { IEditCategory } from "./dto/EditCategory";
 
+class CategoryModelAdapterOptions implements IModelAdapterOptions {
+    loadParentCategory: boolean = false;
+    loadSubCategoeries: boolean = false;
+}
+
 class CategoryService extends BaseService<CategoryModel> {
   protected async adaptModel(
     row: any,
-    options: Partial<IModelAdapterOptions> = {
-      loadParent: false,
-      loadChildren: false,
+    options: Partial<CategoryModelAdapterOptions> = {
+      
     }
   ): Promise<CategoryModel> {
     const item: CategoryModel = new CategoryModel();
@@ -20,7 +24,7 @@ class CategoryService extends BaseService<CategoryModel> {
     item.imagePath = row?.image_path;
     item.parentCategoryId = row?.parent__category_id;
 
-    if (options.loadParent && item.parentCategoryId !== null) {
+    if (options.loadParentCategory && item.parentCategoryId !== null) {
       const data = await this.getById(item.parentCategoryId);
 
       if (data instanceof CategoryModel) {
@@ -28,7 +32,7 @@ class CategoryService extends BaseService<CategoryModel> {
       }
     }
 
-    if (options.loadChildren) {
+    if (options.loadSubCategoeries) {
       const data = await this.getAllByParentCategoryId(item.categoryId);
 
       if (Array.isArray(data)) {
@@ -39,34 +43,37 @@ class CategoryService extends BaseService<CategoryModel> {
     return item;
   }
 
-  public async getAll(): Promise<CategoryModel[] | IErrorResponse> {
-    return await this.getAllByFieldNameFromTable(
+  public async getAll(
+      options: Partial<CategoryModelAdapterOptions> = {
+         
+      }
+  ): Promise<CategoryModel[] | IErrorResponse> {
+    return await this.getAllByFieldNameFromTable<CategoryModelAdapterOptions>(
       "category",
       "parent__category_id",
       null,
-      {
-        loadChildren: true,
-      }
+      options
     );
   }
 
   public async getAllByParentCategoryId(
-    parentCategoryId: number
+    parentCategoryId: number,
+    options: Partial<CategoryModelAdapterOptions> = {},
   ): Promise<CategoryModel[] | IErrorResponse> {
-    return await this.getAllByFieldNameFromTable(
+    return await this.getAllByFieldNameFromTable<CategoryModelAdapterOptions>(
       "category",
       "parent__category_id",
       parentCategoryId,
-      {
-        loadChildren: true,
+      {loadSubCategoeries: true,
       }
     );
   }
 
   public async getById(
-    categoryId: number
+    categoryId: number,
+    options: Partial<CategoryModelAdapterOptions> = {},
   ): Promise<CategoryModel | null | IErrorResponse> {
-    return await this.getByIdFromTable("category", categoryId);
+    return await this.getByIdFromTable<CategoryModelAdapterOptions>("category", categoryId, options);
   }
 
   public async add(
@@ -105,7 +112,8 @@ class CategoryService extends BaseService<CategoryModel> {
 
   public async edit(
     categoryId: number,
-    data: IEditCategory
+    data: IEditCategory,
+    options: Partial<CategoryModelAdapterOptions> = {},
   ): Promise<CategoryModel | IErrorResponse | null> {
     const result = await this.getById(categoryId);
 
@@ -134,7 +142,7 @@ class CategoryService extends BaseService<CategoryModel> {
           categoryId
         ])
         .then(async (result) => {
-          resolve(await this.getById(categoryId));
+          resolve(await this.getById(categoryId, options));
         })
         .catch((error) => {
           resolve({
