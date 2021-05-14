@@ -1,88 +1,110 @@
-import CategoryService from './service';
-import {Request, Response, NextFunction} from "express";
-import CategoryModel from './model';
-import IErrorResponse from '../../common/IErrorResponse.interface';
-import { IAddCategory, IAddCategoryValidator } from './dto/AddCategory';
-import { IEditCategory, IEditCategoryValidator } from './dto/EditCategory';
+import CategoryService from "./service";
+import { Request, Response, NextFunction } from "express";
+import CategoryModel from "./model";
+import IErrorResponse from "../../common/IErrorResponse.interface";
+import { IAddCategory, IAddCategoryValidator } from "./dto/AddCategory";
+import { IEditCategory, IEditCategoryValidator } from "./dto/EditCategory";
 
 class CategoryController {
-    private categoryService: CategoryService;
+  private categoryService: CategoryService;
 
-    constructor(categoryService: CategoryService) {
-        this.categoryService = categoryService;
+  constructor(categoryService: CategoryService) {
+    this.categoryService = categoryService;
+  }
+
+  async getAll(req: Request, res: Response, next: NextFunction) {
+    const categories = await this.categoryService.getAll({
+      loadSubCategoeries: true,
+    });
+
+    res.send(categories);
+  }
+
+  async getById(req: Request, res: Response, next: NextFunction) {
+    const id: string = req.params.id;
+
+    const categoryId: number = +id;
+
+    if (categoryId <= 0) {
+      res.sendStatus(400);
+      return;
     }
 
-    async getAll(req: Request, res: Response, next: NextFunction) {
-        const categories = await this.categoryService.getAll();
+    const data: CategoryModel | null | IErrorResponse =
+      await this.categoryService.getById(categoryId);
 
-        res.send(categories);
+    if (data === null) {
+      res.sendStatus(404);
+      return;
     }
 
-    async getById(req: Request, res: Response, next: NextFunction) {
-        const id: string = req.params.id;
-
-        const categoryId: number = +id;
-
-        if (categoryId <= 0) {
-            res.sendStatus(400);
-            return;
-        }
-
-        const data: CategoryModel|null|IErrorResponse = await this.categoryService.getById(categoryId);
-
-        if (data === null) {
-            res.sendStatus(404);
-            return;
-        }
-
-        if (data instanceof CategoryModel) {
-            res.send(data);
-            return;
-        }
-
-        res.status(500).send(data);
+    if (data instanceof CategoryModel) {
+      res.send(data);
+      return;
     }
 
-    async add(req: Request, res: Response, next: NextFunction) {
-        const data = req.body;
+    res.status(500).send(data);
+  }
 
-        if (!IAddCategoryValidator(data)) {
-            res.status(400).send(IAddCategoryValidator.errors);
-            return;
-        }
+  async add(req: Request, res: Response, next: NextFunction) {
+    const data = req.body;
 
-        const result = await this.categoryService.add(data as IAddCategory);
-
-        res.send(result);
+    if (!IAddCategoryValidator(data)) {
+      res.status(400).send(IAddCategoryValidator.errors);
+      return;
     }
 
-    async edit(req: Request, res: Response, next: NextFunction) {
-        const id: string = req.params.id;
+    const result = await this.categoryService.add(data as IAddCategory);
 
-        const categoryId: number = +id;
+    res.send(result);
+  }
 
-        if (categoryId <= 0) {
-            res.status(400).send("Invalid ID number.");
-            return;
-        }
+  async edit(req: Request, res: Response, next: NextFunction) {
+    const id: string = req.params.id;
 
-        const data = req.body;
+    const categoryId: number = +id;
 
-        if (!IEditCategoryValidator(data)) {
-            res.status(400).send(IEditCategoryValidator.errors);
-            return;
-        }
-
-        const result = await this.categoryService.edit(categoryId, data as IEditCategory);
-
-        if (result === null) {
-            res.sendStatus(404);
-            return;
-        }
-
-        res.send(result);
-
+    if (categoryId <= 0) {
+      res.status(400).send("Invalid ID number.");
+      return;
     }
+
+    const data = req.body;
+
+    if (!IEditCategoryValidator(data)) {
+      res.status(400).send(IEditCategoryValidator.errors);
+      return;
+    }
+
+    const result = await this.categoryService.edit(
+      categoryId,
+      data as IEditCategory,
+      {
+        loadSubCategoeries: true,
+      }
+    );
+
+    if (result === null) {
+      res.sendStatus(404);
+      return;
+    }
+
+    res.send(result);
+  }
+
+  async deleteById(req: Request, res: Response, next: NextFunction) {
+    const id: string = req.params.id;
+
+    const categoryId: number = +id;
+
+    if (categoryId <= 0) {
+      res.status(400).send("Invalid ID number.");
+      return;
+    }
+
+    res.send(await this.categoryService.delete(categoryId));
+
+  }
 }
 
 export default CategoryController;

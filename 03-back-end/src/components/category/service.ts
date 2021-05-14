@@ -6,16 +6,14 @@ import BaseService from "../../services/BaseService";
 import { IEditCategory } from "./dto/EditCategory";
 
 class CategoryModelAdapterOptions implements IModelAdapterOptions {
-    loadParentCategory: boolean = false;
-    loadSubCategoeries: boolean = false;
+  loadParentCategory: boolean = false;
+  loadSubCategoeries: boolean = false;
 }
 
 class CategoryService extends BaseService<CategoryModel> {
   protected async adaptModel(
     row: any,
-    options: Partial<CategoryModelAdapterOptions> = {
-      
-    }
+    options: Partial<CategoryModelAdapterOptions> = {}
   ): Promise<CategoryModel> {
     const item: CategoryModel = new CategoryModel();
 
@@ -44,9 +42,7 @@ class CategoryService extends BaseService<CategoryModel> {
   }
 
   public async getAll(
-      options: Partial<CategoryModelAdapterOptions> = {
-         
-      }
+    options: Partial<CategoryModelAdapterOptions> = {}
   ): Promise<CategoryModel[] | IErrorResponse> {
     return await this.getAllByFieldNameFromTable<CategoryModelAdapterOptions>(
       "category",
@@ -58,22 +54,25 @@ class CategoryService extends BaseService<CategoryModel> {
 
   public async getAllByParentCategoryId(
     parentCategoryId: number,
-    options: Partial<CategoryModelAdapterOptions> = {},
+    options: Partial<CategoryModelAdapterOptions> = {}
   ): Promise<CategoryModel[] | IErrorResponse> {
     return await this.getAllByFieldNameFromTable<CategoryModelAdapterOptions>(
       "category",
       "parent__category_id",
       parentCategoryId,
-      {loadSubCategoeries: true,
-      }
+      { loadSubCategoeries: true }
     );
   }
 
   public async getById(
     categoryId: number,
-    options: Partial<CategoryModelAdapterOptions> = {},
+    options: Partial<CategoryModelAdapterOptions> = {}
   ): Promise<CategoryModel | null | IErrorResponse> {
-    return await this.getByIdFromTable<CategoryModelAdapterOptions>("category", categoryId, options);
+    return await this.getByIdFromTable<CategoryModelAdapterOptions>(
+      "category",
+      categoryId,
+      options
+    );
   }
 
   public async add(
@@ -113,7 +112,7 @@ class CategoryService extends BaseService<CategoryModel> {
   public async edit(
     categoryId: number,
     data: IEditCategory,
-    options: Partial<CategoryModelAdapterOptions> = {},
+    options: Partial<CategoryModelAdapterOptions> = {}
   ): Promise<CategoryModel | IErrorResponse | null> {
     const result = await this.getById(categoryId);
 
@@ -136,15 +135,49 @@ class CategoryService extends BaseService<CategoryModel> {
                     category_id = ?;`;
 
       this.db
-        .execute(sql, [
-          data.name,
-          data.imagePath,
-          categoryId
-        ])
+        .execute(sql, [data.name, data.imagePath, categoryId])
         .then(async (result) => {
           resolve(await this.getById(categoryId, options));
         })
         .catch((error) => {
+          resolve({
+            errorCode: error?.errno,
+            errorMessage: error?.sqlMessage,
+          });
+        });
+    });
+  }
+
+  public async delete(categoryId: number): Promise<IErrorResponse> {
+    return new Promise<IErrorResponse>((resolve) => {
+      const sql = "DELETE FROM category WHERE category_id = ?;";
+      this.db
+        .execute(sql, [categoryId])
+        .then(async (result) => {
+            const deleteinfo: any = result[0];
+            const deletedRowCount: number = +(deleteinfo?.affectedRows);
+
+            if (deletedRowCount === 1) {
+                resolve({
+                    errorCode: 0,
+                    errorMessage: "Record deleted."
+                });
+            }
+            else {
+                resolve({
+                    errorCode: -1,
+                    errorMessage: "This record could not be deleted because it does not exist."
+                })
+            }
+            
+        })
+        .catch((error) => {
+            if (error?.errno === 1451) {
+                resolve({
+                    errorCode: -2,
+                     errorMessage: "This record could not be deleted because it has subcategories.",
+                })
+            }
           resolve({
             errorCode: error?.errno,
             errorMessage: error?.sqlMessage,
