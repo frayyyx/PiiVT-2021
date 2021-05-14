@@ -15,7 +15,7 @@ const Config: IConfig = {
     },
     database: {
         host: "localhost",
-        port: 3306,
+        port: 3307,
         user: "root",
         password: "root",
         database: "aplikacija",
